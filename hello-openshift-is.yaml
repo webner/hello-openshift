@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ImageStream
+metadata:
+  labels:
+    app: hello-openshift
+  name: hello-openshift
+spec:
+  tags:
+  - annotations:
+    from:
+      kind: DockerImage
+      name: docker.io/openshift/hello-openshift
+    name: latest
+    referencePolicy:
+      type: Source

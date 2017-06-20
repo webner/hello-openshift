@@ -1,0 +1,124 @@
+apiVersion: v1
+kind: Template
+metadata:
+  name: hello-openshift
+objects:
+- apiVersion: v1
+  kind: ImageStream
+  metadata:
+    generation: 2
+    labels:
+      app: hello-openshift
+    name: hello-openshift
+  spec:
+    tags:
+    - annotations: null
+      from:
+        kind: DockerImage
+        name: openshift/hello-openshift:latest
+      generation: 2
+      importPolicy: {}
+      name: latest
+      referencePolicy:
+        type: Source
+- apiVersion: v1
+  kind: Service
+  metadata:
+    labels:
+      app: hello-openshift
+    name: hello-openshift
+  spec:
+    ports:
+    - name: 8080-tcp
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+    selector:
+      app: hello-openshift
+      deploymentconfig: hello-openshift
+    sessionAffinity: None
+    type: ClusterIP
+  status:
+    loadBalancer: {}
+- apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    generation: 1
+    labels:
+      app: hello-openshift
+    name: hello-openshift
+  spec:
+    replicas: 1
+    selector:
+      app: hello-openshift
+      deploymentconfig: hello-openshift
+    strategy:
+      activeDeadlineSeconds: 21600
+      resources: {}
+      rollingParams:
+        intervalSeconds: 1
+        maxSurge: 25%
+        maxUnavailable: 25%
+        timeoutSeconds: 600
+        updatePeriodSeconds: 1
+      type: Rolling
+    template:
+      metadata:
+        labels:
+          app: hello-openshift
+          deploymentconfig: hello-openshift
+      spec:
+        containers:
+        - image: docker.io/openshift/hello-openshift
+          imagePullPolicy: Always
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              port: 8080
+              scheme: HTTP
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          name: hello-openshift
+          ports:
+          - containerPort: 8080
+            protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              port: 8080
+              scheme: HTTP
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+    test: false
+    triggers:
+    - type: ConfigChange
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+        - hello-openshift
+        from:
+          kind: ImageStreamTag
+          name: hello-openshift:latest
+      type: ImageChange
+- apiVersion: v1
+  kind: Route
+  metadata:
+    name: hello-openshift
+  spec:
+    port:
+      targetPort: 8080-tcp
+    to:
+      kind: Service
+      name: hello-openshift
+      weight: 100
+    wildcardPolicy: None
